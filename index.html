@@ -925,11 +925,12 @@ function runSearch() {
   const targetSafeties= scored.filter(s => s.finalCat === 'target-safety').sort((a, b) => a.closeness - b.closeness);
   const safeties      = scored.filter(s => s.finalCat === 'safety').sort((a, b) => a.closeness - b.closeness);
 
+  // Only show splitter banner if at least one school actually flags the student as a splitter
+  const overallSplitter = scored.some(s => s.splitter);
   const lsatPcts = scored.map(s => s.lsatPct);
   const gpaPcts = scored.map(s => s.gpaPct);
   const avgLsatPct = lsatPcts.reduce((a,b) => a+b, 0) / lsatPcts.length;
   const avgGpaPct = gpaPcts.reduce((a,b) => a+b, 0) / gpaPcts.length;
-  const overallSplitter = Math.abs(avgLsatPct - avgGpaPct) >= SPLITTER_THRESHOLD;
   const lsatLeads = avgLsatPct > avgGpaPct;
 
   renderResults({ lsat, gpa, reaches, targetReaches, targets, targetSafeties, safeties, overallSplitter, lsatLeads, geo: selectedGeo, scored });
