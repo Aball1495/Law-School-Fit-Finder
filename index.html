@@ -177,7 +177,16 @@
     font-size: 0.75rem;
     color: var(--light);
     margin-top: 5px;
+    line-height: 1.5;
   }
+  .hint-link {
+    color: var(--navy);
+    text-decoration: underline;
+    cursor: pointer;
+    font-weight: 500;
+  }
+  .hint-link:hover { color: #004db3; }
+
 
   /* Geographic filter */
   .geo-options {
@@ -236,6 +245,29 @@
   }
   .run-btn:hover { background: #004db3; transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0,48,135,0.25); }
   .run-btn:active { transform: translateY(0); }
+
+  /* MODE TOGGLE */
+  .mode-toggle { display: flex; flex-direction: column; gap: 7px; }
+  .mode-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .mode-option:hover { border-color: var(--navy); background: #f5f8ff; }
+  .mode-option.selected { border-color: var(--navy); background: #eef2fb; }
+  .mode-option input[type="radio"] { display: none; }
+  .mode-option .geo-dot { margin-top: 3px; flex-shrink: 0; }
+  .mode-option.selected .geo-dot { border-color: var(--navy); background: var(--navy); }
+  .mode-option.selected .geo-dot::after { content: ''; width: 5px; height: 5px; background: white; border-radius: 50%; }
+  .mode-label { display: flex; flex-direction: column; gap: 2px; }
+  .mode-title { font-size: 0.88rem; font-weight: 600; color: var(--dark); }
+  .mode-desc { font-size: 0.73rem; color: var(--light); line-height: 1.4; }
 
   /* RESULTS PANEL */
   .results-panel {
@@ -686,7 +718,7 @@
         <div class="field">
           <label>GPA</label>
           <input type="number" id="gpa-input" min="0" max="4.33" step="0.01" placeholder="e.g. 3.65" />
-          <div class="input-hint">0.00–4.33</div>
+          <div class="input-hint">Enter your transcript GPA. Your LSAC GPA may differ — <span class="hint-link" onclick="document.getElementById('ugpa-modal').style.display='flex'">learn why</span>.</div>
         </div>
       </div>
     </div>
@@ -742,6 +774,28 @@
       </div>
     </div>
 
+    <div class="panel-section">
+      <h3><span class="section-num">3</span> Category breakdown</h3>
+      <div class="mode-toggle">
+        <label class="mode-option selected" onclick="selectMode('5')">
+          <input type="radio" name="mode" value="5" checked>
+          <div class="geo-dot"></div>
+          <div class="mode-label">
+            <span class="mode-title">5 Categories</span>
+            <span class="mode-desc">Reach · Target-Reach · Target · Target-Safety · Safety</span>
+          </div>
+        </label>
+        <label class="mode-option" onclick="selectMode('3')">
+          <input type="radio" name="mode" value="3">
+          <div class="geo-dot"></div>
+          <div class="mode-label">
+            <span class="mode-title">3 Categories</span>
+            <span class="mode-desc">Reach · Target · Safety</span>
+          </div>
+        </label>
+      </div>
+    </div>
+
     <button class="run-btn" onclick="runSearch()">Find My Fit →</button>
 
   </div>
@@ -755,6 +809,33 @@
     </div>
   </div>
 
+</div>
+
+<!-- UGPA EXPLAINER MODAL -->
+<div id="ugpa-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;align-items:center;justify-content:center;padding:20px;" onclick="this.style.display='none'">
+  <div class="modal-box" onclick="event.stopPropagation()" style="max-width:480px;">
+    <div class="modal-header" style="border-bottom:3px solid var(--gold);">
+      <div class="modal-school-name">Transcript GPA vs. LSAC GPA</div>
+      <button class="modal-close" onclick="document.getElementById('ugpa-modal').style.display='none'">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:0.88rem;line-height:1.7;color:var(--mid);">
+        Law schools see your <strong>LSAC-calculated GPA</strong> — not the GPA on your transcript. When you apply through LSAC's Credential Assembly Service (CAS), LSAC recalculates your GPA using their own standardized methodology.
+      </p>
+      <p style="font-size:0.88rem;line-height:1.7;color:var(--mid);margin-top:12px;">
+        A few reasons your LSAC GPA may differ from your transcript GPA:
+      </p>
+      <ul style="font-size:0.85rem;line-height:1.8;color:var(--mid);margin:10px 0 0 18px;">
+        <li>LSAC includes <strong>all undergraduate coursework</strong>, even if your school excluded some grades (like repeated courses)</li>
+        <li>LSAC uses a <strong>standardized grading scale</strong> that may differ from your institution's own scale</li>
+        <li>Transfer credits and coursework from multiple institutions are all factored in</li>
+        <li>Graduate-level courses taken as an undergraduate may be treated differently</li>
+      </ul>
+      <p style="font-size:0.85rem;line-height:1.7;color:var(--mid);margin-top:12px;">
+        For most students the difference is small, but it can be meaningful. The best way to know your LSAC GPA is to register with LSAC and submit your transcript — LSAC will then calculate your official GPA from there. Your pre-law advisor can help you interpret the result.
+      </p>
+    </div>
+  </div>
 </div>
 
 <!-- MODAL OVERLAY -->
@@ -780,8 +861,16 @@ const TARGET_CUTOFF = 60;
 const SPLITTER_THRESHOLD = 20;
 
 let selectedGeo = 'anywhere';
+let selectedMode = '5';
 let currentStudentLSAT = null;
 let currentStudentGPA = null;
+
+function selectMode(val) {
+  selectedMode = val;
+  document.querySelectorAll('.mode-option').forEach(el => {
+    el.classList.toggle('selected', el.querySelector('input').value === val);
+  });
+}
 
 function selectGeo(val) {
   selectedGeo = val;
@@ -852,8 +941,27 @@ function zone(pct) {
   return 'safety';
 }
 
-function finalCategory(lsatPct, gpaPct, acceptanceRate) {
+// 3-category zone: reach < 40, target 40-60, safety > 60
+function zone3(pct) {
+  const p = roundPct(pct);
+  if (p < 40)  return 'reach';
+  if (p <= 60) return 'target';
+  return 'safety';
+}
+
+function finalCategory(lsatPct, gpaPct, acceptanceRate, mode) {
   if (acceptanceRate < 20) return 'reach';
+
+  if (mode === '3') {
+    // 3-category: reach < 40, target 40-60, safety > 60
+    // LSAT drives, but safety capped at target if GPA is reach
+    const lsatZ = zone3(lsatPct);
+    const gpaZ  = zone3(gpaPct);
+    if (lsatZ === 'safety' && gpaZ === 'reach') return 'target';
+    return lsatZ;
+  }
+
+  // 5-category
   const lsatZ = zone(lsatPct);
   const gpaZ  = zone(gpaPct);
   if (lsatZ === 'safety' && gpaZ === 'safety') return 'safety';
@@ -864,11 +972,12 @@ function finalCategory(lsatPct, gpaPct, acceptanceRate) {
   return 'target-reach';
 }
 
-function categoryRationale(lsatPct, gpaPct, finalCat, acceptanceRate) {
+function categoryRationale(lsatPct, gpaPct, finalCat, acceptanceRate, mode) {
+  const zFn = mode === '3' ? zone3 : zone;
+  const lsatZ = zFn(lsatPct);
+  const gpaZ  = zFn(gpaPct);
   const lsatRound = Math.round(lsatPct);
   const gpaRound  = Math.round(gpaPct);
-  const lsatZ = zone(lsatPct);
-  const gpaZ  = zone(gpaPct);
 
   if (acceptanceRate < 20 && !(lsatZ === 'reach' && gpaZ === 'reach')) {
     const statNote = lsatZ === 'safety' && gpaZ === 'safety'
@@ -905,9 +1014,9 @@ function scoreSchool(name, data, lsat, gpa) {
   const lsatPct = interpolatePercentile(lsat, data.lsat_25, data.lsat_50, data.lsat_75);
   const gpaPct = interpolatePercentile(gpa, data.gpa_25, data.gpa_50, data.gpa_75);
   const splitter = isSplitter(lsatPct, gpaPct);
-  const finalCat = finalCategory(lsatPct, gpaPct, data.acceptance_rate);
+  const finalCat = finalCategory(lsatPct, gpaPct, data.acceptance_rate, selectedMode);
   const closeness = closenessScore(lsatPct, gpaPct);
-  const rationale = categoryRationale(lsatPct, gpaPct, finalCat, data.acceptance_rate);
+  const rationale = categoryRationale(lsatPct, gpaPct, finalCat, data.acceptance_rate, selectedMode);
   return { name, data, lsatPct, gpaPct, finalCat, splitter, closeness, rationale };
 }
 
@@ -941,6 +1050,7 @@ function runSearch() {
   const targets       = scored.filter(s => s.finalCat === 'target').sort((a, b) => a.closeness - b.closeness);
   const targetSafeties= scored.filter(s => s.finalCat === 'target-safety').sort((a, b) => a.closeness - b.closeness);
   const safeties      = scored.filter(s => s.finalCat === 'safety').sort((a, b) => a.closeness - b.closeness);
+  const mode          = selectedMode;
 
   // Only show splitter banner if at least one school actually flags the student as a splitter
   const overallSplitter = scored.some(s => s.splitter);
@@ -950,7 +1060,7 @@ function runSearch() {
   const avgGpaPct = gpaPcts.reduce((a,b) => a+b, 0) / gpaPcts.length;
   const lsatLeads = avgLsatPct > avgGpaPct;
 
-  renderResults({ lsat, gpa, reaches, targetReaches, targets, targetSafeties, safeties, overallSplitter, lsatLeads, geo: selectedGeo, scored });
+  renderResults({ lsat, gpa, reaches, targetReaches, targets, targetSafeties, safeties, overallSplitter, lsatLeads, geo: selectedGeo, scored, mode });
 }
 
 // ============================================================
@@ -1135,7 +1245,7 @@ function renderCategoryCard(title, icon, cssClass, schools, maxShow) {
   `;
 }
 
-function renderResults({ lsat, gpa, reaches, targetReaches, targets, targetSafeties, safeties, overallSplitter, lsatLeads, geo, scored }) {
+function renderResults({ lsat, gpa, reaches, targetReaches, targets, targetSafeties, safeties, overallSplitter, lsatLeads, geo, scored, mode }) {
   const panel = document.getElementById('results-panel');
   const geoLabel = geo === 'anywhere' ? 'All Markets' : geo;
 
@@ -1156,15 +1266,15 @@ function renderResults({ lsat, gpa, reaches, targetReaches, targets, targetSafet
   ` : '';
 
   const topReaches       = renderCategoryCard('Reach', '🎯', 'reach', reaches, 5);
-  const topTargetReaches = renderCategoryCard('Target-Reach', '⚡', 'target-reach', targetReaches, 5);
+  const topTargetReaches = mode === '5' ? renderCategoryCard('Target-Reach', '⚡', 'target-reach', targetReaches, 5) : '';
   const topTargets       = renderCategoryCard('Target', '✅', 'target', targets, 5);
-  const topTargetSafeties= renderCategoryCard('Target-Safety', '📈', 'target-safety', targetSafeties, 5);
+  const topTargetSafeties= mode === '5' ? renderCategoryCard('Target-Safety', '📈', 'target-safety', targetSafeties, 5) : '';
   const topSafeties      = renderCategoryCard('Safety', '🛡️', 'safety', safeties, 5);
 
   const allReaches       = renderCategoryCard('All Reach', '🎯', 'reach', reaches, 999);
-  const allTargetReaches = renderCategoryCard('All Target-Reach', '⚡', 'target-reach', targetReaches, 999);
+  const allTargetReaches = mode === '5' ? renderCategoryCard('All Target-Reach', '⚡', 'target-reach', targetReaches, 999) : '';
   const allTargets       = renderCategoryCard('All Target', '✅', 'target', targets, 999);
-  const allTargetSafeties= renderCategoryCard('All Target-Safety', '📈', 'target-safety', targetSafeties, 999);
+  const allTargetSafeties= mode === '5' ? renderCategoryCard('All Target-Safety', '📈', 'target-safety', targetSafeties, 999) : '';
   const allSafeties      = renderCategoryCard('All Safety', '🛡️', 'safety', safeties, 999);
 
   panel.innerHTML = `
@@ -1176,7 +1286,7 @@ function renderResults({ lsat, gpa, reaches, targetReaches, targets, targetSafet
 
     ${splitterHtml}
 
-    <div class="categories-grid">
+    <div class="categories-grid" id="categories-grid" style="grid-template-columns: repeat(${mode === '5' ? 5 : 3}, 1fr);">
       ${topReaches}
       ${topTargetReaches}
       ${topTargets}
@@ -1189,7 +1299,7 @@ function renderResults({ lsat, gpa, reaches, targetReaches, targets, targetSafet
         <span>Show all ${scored.length} schools categorized</span>
         <span class="chevron">▾</span>
       </button>
-      <div class="all-schools-grid" id="all-schools-grid">
+      <div class="all-schools-grid" id="all-schools-grid" style="grid-template-columns: repeat(${mode === '5' ? 5 : 3}, 1fr);">
         ${allReaches}
         ${allTargetReaches}
         ${allTargets}
@@ -1200,7 +1310,7 @@ function renderResults({ lsat, gpa, reaches, targetReaches, targets, targetSafet
 
     <div class="methodology">
       <strong>Methodology:</strong> Percentiles are interpolated from 3-year median (2023–2025) 25th/50th/75th LSAT and GPA data for enrolled students at each school.
-      Reach = both stats below 45th · Target-Reach = one stat below 45th · Target = both 45th–60th · Target-Safety = one stat above 60th · Safety = both above 60th.
+      ${mode === '5' ? 'Reach = both below 45th · Target-Reach = one below 45th · Target = both 45th–60th · Target-Safety = one above 60th · Safety = both above 60th' : 'Reach = below 40th · Target = 40th–60th · Safety = above 60th'}.
       Schools with under 20% acceptance rate are always Reach regardless of stats.
       Click any school card for a full breakdown. Data source: LSAC ABA 509 reports.
       <strong>This tool does not predict admission.</strong>
