@@ -346,7 +346,7 @@
     box-shadow: var(--shadow);
   }
   .category-header {
-    padding: 14px 18px;
+    padding: 12px 16px;
     font-family: 'Playfair Display', serif;
     font-size: 1rem;
     font-weight: 700;
@@ -354,7 +354,22 @@
     align-items: center;
     gap: 10px;
   }
-  .category-header .cat-icon { font-size: 1.1rem; }
+  .cat-title-group {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    flex: 1;
+  }
+  .cat-title { font-size: 0.95rem; font-weight: 700; line-height: 1.2; }
+  .cat-subtitle {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.67rem;
+    font-weight: 400;
+    opacity: 0.82;
+    line-height: 1.3;
+  }
+  .category-header .cat-icon { font-size: 1.1rem; flex-shrink: 0; }
+  .category-header .cat-count { flex-shrink: 0; }
   .category-header .cat-count {
     margin-left: auto;
     font-family: 'DM Sans', sans-serif;
@@ -953,12 +968,17 @@ function finalCategory(lsatPct, gpaPct, acceptanceRate, mode) {
   if (acceptanceRate < 20) return 'reach';
 
   if (mode === '3') {
-    // 3-category: reach < 40, target 40-60, safety > 60
-    // LSAT drives, but safety capped at target if GPA is reach
+    // 3-category rules:
+    // Reach:  either stat below 40th
+    // Safety: both stats above 60th
+    // Target: everything else — neither stat is a liability,
+    //         at least one is competitive (covers both-in-target,
+    //         strong LSAT + target GPA, and strong GPA + target LSAT)
     const lsatZ = zone3(lsatPct);
     const gpaZ  = zone3(gpaPct);
-    if (lsatZ === 'safety' && gpaZ === 'reach') return 'target';
-    return lsatZ;
+    if (lsatZ === 'reach' || gpaZ === 'reach') return 'reach';
+    if (lsatZ === 'safety' && gpaZ === 'safety') return 'safety';
+    return 'target';
   }
 
   // 5-category
@@ -995,8 +1015,15 @@ function categoryRationale(lsatPct, gpaPct, finalCat, acceptanceRate, mode) {
     return 'Your GPA is above the typical range here (' + gpaRound + 'th percentile), and your LSAT is solidly in the middle of the pack (' + lsatRound + 'th percentile). A strong GPA combined with a target-range LSAT puts you in a favorable position, though LSAT carries more weight in most admissions processes.';
   }
 
-  if (finalCat === 'target')
+  if (finalCat === 'target') {
+    const lsatZ = zFn(lsatPct);
+    const gpaZ  = zFn(gpaPct);
+    if (lsatZ === 'safety' && gpaZ === 'target')
+      return 'Your LSAT is above the typical range here (' + lsatRound + 'th percentile) and your GPA is solidly in range (' + gpaRound + 'th percentile). Neither stat is a liability — you are a competitive candidate on the numbers.';
+    if (lsatZ === 'target' && gpaZ === 'safety')
+      return 'Your GPA is above the typical range here (' + gpaRound + 'th percentile) and your LSAT is solidly in range (' + lsatRound + 'th percentile). Neither stat is a liability — you are a competitive candidate on the numbers, though LSAT carries more weight in most admissions processes.';
     return 'Both your LSAT (' + lsatRound + 'th percentile) and GPA (' + gpaRound + 'th percentile) land in the middle of the pack for enrolled students here. You are a plausible fit on the numbers — outcome depends on the strength of the full application.';
+  }
 
   if (finalCat === 'target-reach') {
     if (lsatZ === 'reach' && gpaZ !== 'reach')
@@ -1006,6 +1033,13 @@ function categoryRationale(lsatPct, gpaPct, finalCat, acceptanceRate, mode) {
     return 'Your stats are mixed at this school — LSAT around the ' + lsatRound + 'th percentile, GPA around the ' + gpaRound + 'th. One stat is in range while the other creates a meaningful gap, putting you in hybrid territory.';
   }
 
+  // Reach fallthrough — differentiate between both weak vs one stat dragging
+  const lsatZR = zFn(lsatPct);
+  const gpaZR  = zFn(gpaPct);
+  if (lsatZR === 'reach' && gpaZR !== 'reach')
+    return 'Your LSAT (' + lsatRound + 'th percentile) is below the typical range for enrolled students here and is the primary limiting factor. Your GPA (' + gpaRound + 'th percentile) is competitive, but LSAT carries heavy weight in admissions — a stronger score would meaningfully change your position at this school. Worth discussing a retake with your advisor.';
+  if (gpaZR === 'reach' && lsatZR !== 'reach')
+    return 'Your GPA (' + gpaRound + 'th percentile) is below the typical range for enrolled students here and is a notable concern. Your LSAT (' + lsatRound + 'th percentile) is competitive, but the GPA gap will get scrutiny at this school. Worth discussing individually with your advisor.';
   return 'Both your LSAT (' + lsatRound + 'th percentile) and GPA (' + gpaRound + 'th percentile) fall below the typical range for enrolled students here. You would need to be a compelling candidate in other dimensions to be competitive. This school is worth including on a list only if you have a strong personal connection to it.';
 }
 
@@ -1228,16 +1262,29 @@ function renderSchoolCard(s) {
   `;
 }
 
+const CATEGORY_SUBTITLES = {
+  // 5-category
+  'reach':         { '5': 'Both stats below 45th percentile', '3': 'Either stat below 40th percentile' },
+  'target-reach':  { '5': 'One stat below 45th, one in range',  '3': null },
+  'target':        { '5': 'Both stats between 45th–60th',       '3': 'Neither stat a liability, at least one competitive' },
+  'target-safety': { '5': 'One stat above 60th, one in range',  '3': null },
+  'safety':        { '5': 'Both stats above 60th percentile',   '3': 'Both stats above 60th percentile' },
+};
+
 function renderCategoryCard(title, icon, cssClass, schools, maxShow) {
   const shown = schools.slice(0, maxShow);
   const schoolsHtml = shown.length > 0
     ? shown.map(renderSchoolCard).join('')
     : `<div class="no-results">No schools in this category${selectedGeo !== 'anywhere' ? ' for this market' : ''}.</div>`;
+  const subtitle = (CATEGORY_SUBTITLES[cssClass] || {})[selectedMode] || '';
   return `
     <div class="category-card ${cssClass}">
       <div class="category-header">
         <span class="cat-icon">${icon}</span>
-        ${title}
+        <span class="cat-title-group">
+          <span class="cat-title">${title}</span>
+          ${subtitle ? `<span class="cat-subtitle">${subtitle}</span>` : ''}
+        </span>
         <span class="cat-count">${schools.length} school${schools.length !== 1 ? 's' : ''}</span>
       </div>
       <div class="school-list">${schoolsHtml}</div>
