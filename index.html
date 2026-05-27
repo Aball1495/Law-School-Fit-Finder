@@ -1142,13 +1142,13 @@ function openModal(schoolName) {
             <div class="modal-stat-label">LSAT</div>
             <div class="modal-stat-value">${currentStudentLSAT}</div>
             <div class="modal-stat-school">School median: ${data.lsat_50} (25th: ${data.lsat_25} / 75th: ${data.lsat_75})</div>
-            <div class="modal-stat-pct" style="color:${catColor[categorize(s.lsatPct)]}">~${+(s.lsatPct).toFixed(1)}th percentile of enrolled students</div>
+            <div class="modal-stat-pct" style="color:${catColor[(selectedMode==='3'?zone3:zone)(s.lsatPct)]}">~${+(s.lsatPct).toFixed(1)}th percentile of enrolled students</div>
           </div>
           <div class="modal-stat-block">
             <div class="modal-stat-label">GPA</div>
             <div class="modal-stat-value">${currentStudentGPA.toFixed(2)}</div>
             <div class="modal-stat-school">School median: ${data.gpa_50} (25th: ${data.gpa_25} / 75th: ${data.gpa_75})</div>
-            <div class="modal-stat-pct" style="color:${catColor[categorize(s.gpaPct)]}">~${+(s.gpaPct).toFixed(1)}th percentile of enrolled students</div>
+            <div class="modal-stat-pct" style="color:${catColor[(selectedMode==='3'?zone3:zone)(s.gpaPct)]}">~${+(s.gpaPct).toFixed(1)}th percentile of enrolled students</div>
           </div>
         </div>
 
@@ -1206,16 +1206,16 @@ function closeModal() {
 // ============================================================
 
 function pctClass(pct) {
-  const p = roundPct(pct);
-  if (p < REACH_CUTOFF)  return 'pct-reach';
-  if (p <= TARGET_CUTOFF) return 'pct-target';
+  const z = (selectedMode === '3' ? zone3 : zone)(pct);
+  if (z === 'reach')  return 'pct-reach';
+  if (z === 'target') return 'pct-target';
   return 'pct-safety';
 }
 
 function barColor(pct) {
-  const p = roundPct(pct);
-  if (p < REACH_CUTOFF)  return 'var(--reach-color)';
-  if (p <= TARGET_CUTOFF) return 'var(--target-color)';
+  const z = (selectedMode === '3' ? zone3 : zone)(pct);
+  if (z === 'reach')  return 'var(--reach-color)';
+  if (z === 'target') return 'var(--target-color)';
   return 'var(--safety-color)';
 }
 
