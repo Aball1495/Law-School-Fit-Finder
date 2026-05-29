@@ -679,6 +679,40 @@
   }
   .all-schools-grid.visible { display: grid; }
 
+  /* DOT KEY */
+  .dot-key {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 8px 14px;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .dot-key-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--light);
+  }
+  .dot-key-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.78rem;
+    color: var(--mid);
+    font-weight: 500;
+  }
+  .dot-key-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
   /* METHODOLOGY NOTE */
   .methodology {
     margin-top: 24px;
@@ -959,7 +993,7 @@ function zone(pct) {
 // 3-category zone: reach < 40, target 40-60, safety > 60
 function zone3(pct) {
   const p = roundPct(pct);
-  if (p < 40)  return 'reach';
+  if (p < 45)  return 'reach';
   if (p <= 60) return 'target';
   return 'safety';
 }
@@ -969,7 +1003,7 @@ function finalCategory(lsatPct, gpaPct, acceptanceRate, mode) {
 
   if (mode === '3') {
     // 3-category rules:
-    // Reach:  either stat below 40th
+    // Reach:  either stat below 45th
     // Safety: both stats above 60th
     // Target: everything else — neither stat is a liability,
     //         at least one is competitive (covers both-in-target,
@@ -1263,20 +1297,26 @@ function renderSchoolCard(s) {
 }
 
 const CATEGORY_SUBTITLES = {
-  // 5-category
-  'reach':         { '5': 'Both stats below 45th percentile', '3': 'Either stat below 40th percentile' },
-  'target-reach':  { '5': 'One stat below 45th, one in range',  '3': null },
-  'target':        { '5': 'Both stats between 45th–60th',       '3': 'Neither stat a liability, at least one competitive' },
-  'target-safety': { '5': 'One stat above 60th, one in range',  '3': null },
-  'safety':        { '5': 'Both stats above 60th percentile',   '3': 'Both stats above 60th percentile' },
+  'target-reach':  { '5': 'One score is within 45th–60th · one score is below 45th', '3': null },
+  'target':        { '5': 'Both scores are within the 45th–60th percentile',             '3': 'Both scores are within the 45th–60th percentile' },
+  'target-safety': { '5': 'One score is above 60th · one score is within 45th–60th',    '3': null },
+  'safety':        { '5': 'Both scores are above the 60th percentile',                  '3': 'Both scores are above the 60th percentile' },
 };
+
+function getReachSubtitle(schools, mode) {
+  return mode === '5'
+    ? 'Both scores are below the 45th percentile · or acceptance rate is below 20%'
+    : 'Both scores are below the 45th percentile · or acceptance rate is below 20%';
+}
 
 function renderCategoryCard(title, icon, cssClass, schools, maxShow) {
   const shown = schools.slice(0, maxShow);
   const schoolsHtml = shown.length > 0
     ? shown.map(renderSchoolCard).join('')
     : `<div class="no-results">No schools in this category${selectedGeo !== 'anywhere' ? ' for this market' : ''}.</div>`;
-  const subtitle = (CATEGORY_SUBTITLES[cssClass] || {})[selectedMode] || '';
+  const subtitle = cssClass === 'reach'
+    ? getReachSubtitle(schools, selectedMode)
+    : (CATEGORY_SUBTITLES[cssClass] || {})[selectedMode] || '';
   return `
     <div class="category-card ${cssClass}">
       <div class="category-header">
@@ -1333,6 +1373,19 @@ function renderResults({ lsat, gpa, reaches, targetReaches, targets, targetSafet
 
     ${splitterHtml}
 
+    <div class="dot-key">
+      <span class="dot-key-label">Score key:</span>
+      ${selectedMode === '5' ? `
+        <span class="dot-key-item"><span class="dot-key-dot" style="background:var(--reach-color)"></span>Below 45th</span>
+        <span class="dot-key-item"><span class="dot-key-dot" style="background:var(--target-color)"></span>45th–60th</span>
+        <span class="dot-key-item"><span class="dot-key-dot" style="background:var(--safety-color)"></span>Above 60th</span>
+      ` : `
+        <span class="dot-key-item"><span class="dot-key-dot" style="background:var(--reach-color)"></span>Below 45th</span>
+        <span class="dot-key-item"><span class="dot-key-dot" style="background:var(--target-color)"></span>45th–60th</span>
+        <span class="dot-key-item"><span class="dot-key-dot" style="background:var(--safety-color)"></span>Above 60th</span>
+      `}
+    </div>
+
     <div class="categories-grid" id="categories-grid" style="grid-template-columns: repeat(${mode === '5' ? 5 : 3}, 1fr);">
       ${topReaches}
       ${topTargetReaches}
@@ -1357,7 +1410,7 @@ function renderResults({ lsat, gpa, reaches, targetReaches, targets, targetSafet
 
     <div class="methodology">
       <strong>Methodology:</strong> Percentiles are interpolated from 3-year median (2023–2025) 25th/50th/75th LSAT and GPA data for enrolled students at each school.
-      ${mode === '5' ? 'Reach = both below 45th · Target-Reach = one below 45th · Target = both 45th–60th · Target-Safety = one above 60th · Safety = both above 60th' : 'Reach = below 40th · Target = 40th–60th · Safety = above 60th'}.
+      ${mode === '5' ? 'Reach = both below 45th · Target-Reach = one below 45th · Target = both 45th–60th · Target-Safety = one above 60th · Safety = both above 60th' : 'Reach = below 45th · Target = 45th–60th · Safety = above 60th'}.
       Schools with under 20% acceptance rate are always Reach regardless of stats.
       Click any school card for a full breakdown. Data source: LSAC ABA 509 reports.
       <strong>This tool does not predict admission.</strong>
